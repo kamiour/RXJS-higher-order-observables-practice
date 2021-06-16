@@ -16,6 +16,8 @@ import {
   map,
   pluck,
   tap,
+  scan,
+  mapTo,
 } from 'rxjs/operators';
 import {
   fromEvent,
@@ -27,6 +29,7 @@ import {
   NEVER,
   concat,
   combineLatest,
+  EMPTY,
 } from 'rxjs';
 import { fromFetch } from 'rxjs/fetch';
 
@@ -187,6 +190,72 @@ import { fromFetch } from 'rxjs/fetch';
   const innerObservable = interval(1000).pipe(take(5));
 
   const stream$ = outerObservable.pipe(switchMapTo(innerObservable));
+  //   run(stream$);
+})();
+
+// My tasks
+// switchMap()
+// Сделайте запрос на получение GitHub юзера по логину из инпута.
+// Если такого юзера нет, сделать запрос на какого - то дефолтного юзера(например, 'mojombo')
+(function myTask1() {
+  function getGithubUsername(): string {
+    const username = (document.getElementById('text-field') as HTMLInputElement)
+      .value;
+
+    return username;
+  }
+
+  const defaultUser = 'mojombo';
+
+  const runBtn = document.getElementById('runBtn');
+
+  const clicks$ = fromEvent(runBtn, 'click').pipe(
+    map(() => getGithubUsername())
+  );
+
+  const defaultUserObs$ = fromFetch(
+    `https://api.github.com/users/${defaultUser}`
+  ).pipe(switchMap((response) => response.json()));
+
+  const stream$ = clicks$.pipe(
+    switchMap((username) => {
+      return fromFetch(`https://api.github.com/users/${username}`).pipe(
+        switchMap(
+          (response) => (response.ok ? response.json() : defaultUserObs$)
+        )
+      );
+    })
+  );
+
+  //   run(stream$);
+})();
+
+// exhaustMap()
+// Сделайте запрос на получение юзера по id (значение из инпута) (используя emulateHttpCall() функцию)
+// так, чтобы следующий клик не обрабатывался, пока не обработается предыдущий
+(function myTask2() {
+  function getUserId(): number {
+    const userId = (document.getElementById('text-field') as HTMLInputElement)
+      .value;
+
+    return +userId;
+  }
+
+  function emulateHttpCall(id: number): Observable<any> {
+    function randomDelay(min: number, max: number) {
+      const pause = Math.floor(Math.random() * (max - min)) + min;
+      return pause;
+    }
+
+    return of({ id, name: `user-${id}` }).pipe(delay(randomDelay(3000, 5000)));
+  }
+
+  const runBtn = document.getElementById('runBtn');
+
+  const clicks$ = fromEvent(runBtn, 'click').pipe(map(() => getUserId()));
+
+  const stream$ = clicks$.pipe(exhaustMap((id) => emulateHttpCall(id)));
+
   //   run(stream$);
 })();
 
